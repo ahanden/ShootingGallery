@@ -4,8 +4,31 @@
 	<style>
 		@font-face {
 			font-family: CarnevaleeFreakshow;
-			src: url('Carnevalee Freakshow.ttf');
+			src: url('font/Carnevalee Freakshow.ttf');
 		}
+		@font-face {
+			font-family: "Flaticon";
+			src: url("font/flaticon.eot");
+			src: url("font/flaticon.eot#iefix") format("embedded-opentype"),
+			url("font/flaticon.woff") format("woff"),
+			url("font/flaticon.ttf") format("truetype"),
+			url("font/flaticon.svg") format("svg");
+			font-weight: normal;
+			font-style: normal;
+		}
+		[class^="flaticon-"]:before, [class*=" flaticon-"]:before,
+		[class^="flaticon-"]:after, [class*=" flaticon-"]:after {   
+			font-family: Flaticon;
+			font-size: 20px;
+			font-style: normal;
+			margin-left: 20px;
+		}.flaticon-speaker111:before {
+			content: "\e000";
+		}
+		.flaticon-speaker113:before {
+			content: "\e001";
+		}
+
 		.title {
 			font-family: CarnevaleeFreakshow;
 			font-size: 5em;
@@ -18,6 +41,7 @@
 			margin-top: 200px;
 			background-image: url('img/title.png');
 			backgorund-repeat: repeat-x;
+			position: relative;
 		}
 		.gallery {
 			color: #fff;
@@ -41,18 +65,18 @@
 			position: relative;
 			box-shadow: 0px 10px 30px #444 inset;
 		}
-		.duck {
-			background-size: 50px 50px;			
-			background-repeat: no-repeat;
-		}
-		.row:nth-child(even) .duck { background-image: url('img/duck-left.png'); }
-		.row:nth-child(odd) .duck {	background-image: url('img/duck-right.png'); }
-		.can { background-color: #aaa; }
+		.row:nth-child(even) .duck { background-image: url('img/duck-left.gif'); }
+		.row:nth-child(odd) .duck {	background-image: url('img/duck-right.gif'); }
+		.can { background-image: url('img/can.gif'); }
+		.clock { background-image: url('img/clock.gif'); }
+		.fish { background-image: url('img/fish.gif'); }
+		.box { background-image: url('img/box.gif'); }
+		.bottle { background-image: url('img/bottle.gif'); }
 		.target {
 			width: 50px;
 			height: 50px;
 			position: absolute;
-			bottom: 5px;
+			bottom: 0px;
 			-webkit-transition: -webkit-transform .5s;
 			    -ms-transition: -ms-transform .5s;
 			        transition: transform .5s;
@@ -110,10 +134,16 @@
 			background-color: #e00;
 			box-shadow: 0px 0px 5px #fff inset;
 		}
+		.audio {
+			position: absolute;
+			left: 0px;
+			top: 0px;
+			cursor: pointer;
+		}
 	</style>
 </head>
 <body>
-	<div class="title">The Shooting Gallery</div>
+	<div class="title"><span class="flaticon-speaker111 audio"></span>The Shooting Gallery</div>
 	<div class="gallery">
 		<div class="border-left"></div>
 		<div class="border-right"></div>
@@ -126,10 +156,11 @@
 		<button id="start" disabled>Loading...</button>
 	</div>
 	<div class="credits">
-		Shooting gallery coded by <a href="http://adamhanden.com">Adam Handen</a>.<br>
-		<a href="http://www.1001fonts.com/carnivalee-freakshow-font.html">Carnivalee Freakshow font</a> by Chris Hansen, all rights reserved 2004.
+		Code and terribly drawings by <a href="http://adamhanden.com">Adam Handen</a>.<br>
+		<a href="http://www.1001fonts.com/carnivalee-freakshow-font.html">Carnivalee Freakshow</a> font by Chris Hansen, all rights reserved 2004.<br>
+		Sound icons downloaded from <a href="http://www.flaticon.com">flaticon.com</a> and authored by <a href="http://www.freepik.com">Freepik</a>.
 	</div>
-	<script src="jquery-1.11.2.min.js"></script>
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 	<script>
 		// Player's score
 		var score = 0;
@@ -140,9 +171,10 @@
 		// A tracker for when to create the next target
 		var progress = 0;
 		// Time in each round
-		var start_time = 20;
+		var start_time = 150;
 		// The time left (in seconds)
 		var time = 0;
+		var sound_on = true;
 		
 		// Frequency of objecty appearances
 		// Frequencies should sum to 1, otherwise
@@ -151,22 +183,39 @@
 		//    listed objects - mostly for the purpose
 		//    of breaking ties.
 		var frequencies = [
-			{"freq": 0.4, "object": "can"},
+			{"freq": 0.05, "object": "clock"},
+			{"freq": 0.1, "object": "can"},
+			{"freq": 0.1, "object": "fish"},
+			{"freq": 0.1, "object": "box"},
+			{"freq": 0.1, "object": "bottle"},
 			{"freq": 0.6, "object": "duck"}
 		];
 		
 		// Scores associated with each type of target
 		var target_values = {
-			"duck": 5,
-			"can": -3
+			"duck": {"score": 5, "time": 0, "audio": "quack"},
+			"can": {"score": -3, "time": 0, "audio": "bad"},
+			"fish": {"score": -3, "time": 0, "audio": "bad"},
+			"box": {"score": -3, "time": 0, "audio": "bad"},
+			"bottle": {"score": -3, "time": 0, "audio": "bad"},
+			"clock": {"score": 0, "time": 10, "audio": "harp"}
 		};
 		
 		// Regular expression for later computation.
 		// This adds just a little bit of speed.
 		var object_class_re = new RegExp("\\s*target\\s*");
 		
+		var audios = [];
 		
 		$(document).ready(function() {
+			// Setup sounds
+			audios["quack"] = document.createElement('audio');
+			audios["quack"].setAttribute('src', 'sound/quack.mp3');
+			audios["bad"] = document.createElement('audio');
+			audios["bad"].setAttribute('src', 'sound/bad.mp3');
+			audios["harp"] = document.createElement('audio');
+			audios["harp"].setAttribute('src', 'sound/harp.mp3');
+			$.get();
 			// Timer
 			setInterval(function(){
 				if(time == 0)
@@ -235,8 +284,17 @@
 			},500,function(){
 				$(this).remove();
 			});
+			// Play sounds
+			try {
+				if(sound_on) {
+					audios[target_values[object]["audio"]].play();
+					audios[target_values[object]["audio"]].Play();
+				}
+			} catch(err) {}
 			// Update the score
-			score = score +target_values[object] < 0 ? score = 0 : score + target_values[object];
+			score = score + target_values[object]["score"] < 0 ? score = 0 : score + target_values[object]["score"];
+			time += target_values[object]["time"];
+			updateTimer();
 			$("#score").html(score);
 		});
 		
@@ -263,6 +321,15 @@
 				seconds = "0"+seconds;
 			$("#time-left").html(Math.floor(time/60)+":"+seconds);
 		}
+		
+		// Toggle Audio
+		$(document).on("click",".audio",function() {
+			if(sound_on)
+				$(this).addClass("flaticon-speaker113").removeClass("flaticon-speaker111");
+			else
+				$(this).removeClass("flaticon-speaker113").addClass("flaticon-speaker111");
+			sound_on = !sound_on;
+		});
 	</script>
 </body>
 </html>
