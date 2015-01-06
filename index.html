@@ -10,13 +10,17 @@
 			font-family: CarnevaleeFreakshow;
 			font-size: 5em;
 			font-style: italic;
+			color: #fff;
 			text-align: center;
-			width: 640px;
+			width: 760px;
 			margin-left: auto;
 			margin-right: auto;
 			margin-top: 200px;
+			background-image: url('img/title.png');
+			backgorund-repeat: repeat-x;
 		}
 		.gallery {
+			color: #fff;
 			/* Center the gallery */
 			margin-left: auto;
 			margin-right: auto;
@@ -24,32 +28,26 @@
 			position: relative;
 			width: 640px;
 			height: 320px;
-			
-			
-			
+				
 			font-family: CarnevaleeFreakshow;
 			font-size: 2em;
+			background-color: #000;
 		}
 		.row {
 			width: 100%;
 			height: 19%;
 			margin-top: 1%;
-			background-color: #fa6;
+			background-color: #e96;
 			position: relative;
+			box-shadow: 0px 10px 30px #444 inset;
 		}
 		.duck {
 			background-size: 50px 50px;			
 			background-repeat: no-repeat;
 		}
-		.row:nth-child(even) .duck {
-			background-image: url('duck-left.png');
-		}
-		.row:nth-child(odd) .duck {
-			background-image: url('duck-right.png');
-		}
-		.can {
-			background-color: #aaa;
-		}
+		.row:nth-child(even) .duck { background-image: url('img/duck-left.png'); }
+		.row:nth-child(odd) .duck {	background-image: url('img/duck-right.png'); }
+		.can { background-color: #aaa; }
 		.target {
 			width: 50px;
 			height: 50px;
@@ -65,43 +63,67 @@
 			     -o-transform: perspective(200px) rotateX(100deg);
 			        transform: perspective(200px) rotateX(100deg);
 		}
-		.row:nth-child(odd) .target {
-			left: -50px;
-		}
-		.row:nth-child(even) .target {
-			right: -50px;
-		}
+		.row:nth-child(odd) .target { left: -50px; }
+		.row:nth-child(even) .target { right: -50px; }
 		.gallery .border-left, .gallery .border-right {
 			height: 100%;
 			width: 60px;
-			background-color: #fff;
+			/*background-color: #fff;*/
+			background-image: url('img/sidebars.png');
+			background-repeat: repeat-y;
 			position: absolute;
 			z-index: 1001;
 		}
-		.gallery .border-left {
-			left: -60px;
-		}
-		.gallery .border-right {
-			right: -60px;
-		}
+		.gallery .border-left { left: -60px; }
+		.gallery .border-right { right: -60px; }
 		.credits {
 			margin-left: auto;
 			margin-right: auto;
 			width: 640px;
+		}
+		#timer { float: right; }
+		#start {
+			font-family: CarnevaleeFreakshow;
+			width: 100px;
+			height: 50px;
+			position: absolute;
+			left: 270px;
+			top: 50%;
+			-webkit-border-radius: 5px;
+			   -moz-border-radius: 5px;
+			        border-radius: 5px;			
+			font-size: 25px;
+			border:none;
+		}
+		#start:disabled {
+			color: #fff;
+			background-color: #ccc;
+			cursor: default;
+			border:none;
+		}
+		#start:enabled {
+			cursor: pointer;
+			background-color: #c00;
+			color: #fff;
+		}
+		#start:enabled:hover {
+			background-color: #e00;
+			box-shadow: 0px 0px 5px #fff inset;
 		}
 	</style>
 </head>
 <body>
 	<div class="title">The Shooting Gallery</div>
 	<div class="gallery">
-		
 		<div class="border-left"></div>
 		<div class="border-right"></div>
 		Score: <span id="score">0</span>
+		<span id="timer">Time Left: <span id="time-left">0:00</span></span>
 		<div class="row"><div class="target"></div></div>
 		<div class="row"><div class="target"></div></div>
 		<div class="row"><div class="target"></div></div>
 		<div class="row"><div class="target"></div></div>
+		<button id="start" disabled>Loading...</button>
 	</div>
 	<div class="credits">
 		Shooting gallery coded by <a href="http://adamhanden.com">Adam Handen</a>.<br>
@@ -117,6 +139,10 @@
 		var row_size = $(".row").width();
 		// A tracker for when to create the next target
 		var progress = 0;
+		// Time in each round
+		var start_time = 20;
+		// The time left (in seconds)
+		var time = 0;
 		
 		// Frequency of objecty appearances
 		// Frequencies should sum to 1, otherwise
@@ -134,27 +160,27 @@
 			"duck": 5,
 			"can": -3
 		};
+		
+		// Regular expression for later computation.
+		// This adds just a little bit of speed.
 		var object_class_re = new RegExp("\\s*target\\s*");
 		
-		// Animation
+		
 		$(document).ready(function() {
+			// Timer
+			setInterval(function(){
+				if(time == 0)
+					endGame();
+				else {
+					time--;
+					updateTimer();
+				}
+			},1000);
+			// Animation
 			setInterval(function(){
 				progress += speed;
 				if(progress >= row_size/4) { // Modify denominator to increase/deacrese targets per row.
-					// Generate a new target for each row
-					$(".row").each(function(i,d){
-						var r = Math.random();
-						var object = undefined;
-						var p_count = 0;
-						for(var j = 0; j < frequencies.length && object === undefined; j++) {
-							if(r < p_count + frequencies[j]["freq"]) {
-								object = frequencies[j]["object"];
-							}
-							else
-								p_count += frequencies[j]["freq"];
-						}
-						$(d).append($("<div class='target'></div>").addClass(object));
-					});
+					addTargets();
 					// Reset the progress counter
 					progress = 0;
 				}
@@ -174,7 +200,29 @@
 						$(d).css("right",right+speed+"px");
 				});
 			},16); // For 60 FPS, the interval should be set to 16.
+			
+			$("#start").prop("disabled",false).html("Start!");
 		});
+		
+		// Generate a new target for each row
+		// (does nothing if there is no time remaining
+		function addTargets() {
+			if(time <= 0)
+				return;
+			$(".row").each(function(i,d){
+				var r = Math.random();
+				var object = undefined;
+				var p_count = 0;
+				for(var j = 0; j < frequencies.length && object === undefined; j++) {
+					if(r < p_count + frequencies[j]["freq"]) {
+						object = frequencies[j]["object"];
+					}
+					else
+						p_count += frequencies[j]["freq"];
+				}
+				$(d).append($("<div class='target'></div>").addClass(object));
+			});
+		}
 		
 		// Shooting
 		$(document).on("click",".target",function(){
@@ -191,6 +239,30 @@
 			score = score +target_values[object] < 0 ? score = 0 : score + target_values[object];
 			$("#score").html(score);
 		});
+		
+		// Start the game
+		$(document).on("click","#start",function() {
+			score = 0;
+			$("#score").html(score);
+			time = start_time;
+			updateTimer();
+			$("#start").hide();
+		});
+		
+		// End the game
+		function endGame() {
+			$(".target").remove();
+			$("#start").show();
+		}
+		
+		// Update the time display
+		// (Does not decrement value)
+		function updateTimer() {
+			var seconds = time%60;
+			if(seconds < 10)
+				seconds = "0"+seconds;
+			$("#time-left").html(Math.floor(time/60)+":"+seconds);
+		}
 	</script>
 </body>
 </html>
