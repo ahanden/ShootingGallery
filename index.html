@@ -38,7 +38,14 @@
 			position: relative;
 		}
 		.duck {
-			background-color: #ff0;
+			background-size: 50px 50px;			
+			background-repeat: no-repeat;
+		}
+		.row:nth-child(even) .duck {
+			background-image: url('duck-left.png');
+		}
+		.row:nth-child(odd) .duck {
+			background-image: url('duck-right.png');
 		}
 		.can {
 			background-color: #aaa;
